@@ -107,6 +107,10 @@ function enable() {
         if (ext.timeoutId) {
             this._onTimeout();
         }
+        
+        ext.thumbnailsBox._destroyThumbnails();
+        ext.thumbnailsBox.destroy();
+        this.actor.destroy();
 
         this.emit('destroy');
     });

@@ -18,6 +18,7 @@ const Clutter = imports.gi.Clutter;
 const Gio = imports.gi.Gio;
 const Lang = imports.lang;
 const Shell = imports.gi.Shell;
+const Signals = imports.signals;
 const St = imports.gi.St;
 
 const Main = imports.ui.main;
@@ -84,27 +85,40 @@ const ThumbnailsBox = new Lang.Class({
         this.actor.connect('button-press-event', function() { return true; });
         this.actor.connect('button-release-event', Lang.bind(this, this._onButtonRelease));
 
-        Main.overview.connect('showing',
-                              Lang.bind(this, this._createThumbnails));
-        Main.overview.connect('hidden',
-                              Lang.bind(this, this._destroyThumbnails));
+        this._signals = [];
+        this._signals.push(Main.overview.connect('showing',
+                              Lang.bind(this, this._createThumbnails)));
+        this._signals.push(Main.overview.connect('hidden',
+                              Lang.bind(this, this._destroyThumbnails)));
 
-        Main.overview.connect('item-drag-begin',
-                              Lang.bind(this, this._onDragBegin));
-        Main.overview.connect('item-drag-end',
-                              Lang.bind(this, this._onDragEnd));
-        Main.overview.connect('item-drag-cancelled',
-                              Lang.bind(this, this._onDragCancelled));
-        Main.overview.connect('window-drag-begin',
-                              Lang.bind(this, this._onDragBegin));
-        Main.overview.connect('window-drag-end',
-                              Lang.bind(this, this._onDragEnd));
-        Main.overview.connect('window-drag-cancelled',
-                              Lang.bind(this, this._onDragCancelled));
+        this._signals.push(Main.overview.connect('item-drag-begin',
+                              Lang.bind(this, this._onDragBegin)));
+        this._signals.push(Main.overview.connect('item-drag-end',
+                              Lang.bind(this, this._onDragEnd)));
+        this._signals.push(Main.overview.connect('item-drag-cancelled',
+                              Lang.bind(this, this._onDragCancelled)));
+        this._signals.push(Main.overview.connect('window-drag-begin',
+                              Lang.bind(this, this._onDragBegin)));
+        this._signals.push(Main.overview.connect('window-drag-end',
+                              Lang.bind(this, this._onDragEnd)));
+        this._signals.push(Main.overview.connect('window-drag-cancelled',
+                              Lang.bind(this, this._onDragCancelled)));
 
         this._settings = new Gio.Settings({ schema: OVERRIDE_SCHEMA });
-        this._settings.connect('changed::dynamic-workspaces',
+        this._dynamicWorkspacesId = this._settings.connect('changed::dynamic-workspaces',
             Lang.bind(this, this._updateSwitcherVisibility));
+    },
+    
+    destroy: function () {
+        this.actor.destroy();
+        for (let i in this._signals) {
+            Main.overview.disconnect(this._signals[i]);
+        }
+        this._signals = [];
+        this._settings.disconnect(this._dynamicWorkspacesId);
+        
+        this.emit('destroy');
     }
     
 });
+Signals.addSignalMethods(ThumbnailsBox.prototype);
