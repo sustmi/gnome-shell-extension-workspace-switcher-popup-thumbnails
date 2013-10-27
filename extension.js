@@ -27,7 +27,7 @@ const Me = ExtensionUtils.getCurrentExtension();
 const MonkeyPatch = Me.imports.monkeyPatch;
 
 const WorkspaceSwitcherPopup = imports.ui.workspaceSwitcherPopup;
-const WorkspaceThumbnail = imports.ui.workspaceThumbnail;
+const ThumbnailsBox = Me.imports.thumbnailsBox;
 
 const ANIMATION_TIME = 0.1;
 const DISPLAY_TIMEOUT = 600;
@@ -54,7 +54,7 @@ function enable() {
                                      style_class: 'workspace-switcher-group' });
         Main.uiGroup.add_actor(this.actor);
         
-        ext.thumbnailsBox = new WorkspaceThumbnail.ThumbnailsBox();
+        ext.thumbnailsBox = new ThumbnailsBox.ThumbnailsBox();
         ext.thumbnailsBox._createThumbnails();
         ext.thumbnailsBox._background.set_style('border: 1px solid rgba(128, 128, 128, 0.4); \
                                                  border-radius: 9px; \
