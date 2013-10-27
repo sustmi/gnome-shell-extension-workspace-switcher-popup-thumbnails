@@ -22,53 +22,15 @@ const St = imports.gi.St;
 const Main = imports.ui.main;
 const Tweener = imports.ui.tweener;
 
+const ExtensionUtils = imports.misc.extensionUtils;
+const Me = ExtensionUtils.getCurrentExtension();
+const MonkeyPatch = Me.imports.monkeyPatch;
+
 const WorkspaceSwitcherPopup = imports.ui.workspaceSwitcherPopup;
 const WorkspaceThumbnail = imports.ui.workspaceThumbnail;
 
 const ANIMATION_TIME = 0.1;
 const DISPLAY_TIMEOUT = 600;
-
-function injectBeforeFunction(parent, name, func) {
-    let original = parent[name];
-    parent[name] = function() {
-        let ret;
-        ret = func.apply(this, arguments);
-        if (original !== undefined) {
-            ret = original.apply(this, arguments);
-        }
-        return ret;
-    }
-    return original;
-}
-
-function injectAfterFunction(parent, name, func) {
-    let original = parent[name];
-    parent[name] = function() {
-        let ret;
-        if (original !== undefined) {
-            ret = original.apply(this, arguments);
-        }
-        ret = func.apply(this, arguments);
-        return ret;
-    }
-    return original;
-}
-
-function replaceFunction(parent, name, func) {
-    let original = parent[name];
-    parent[name] = function() {
-        return func.apply(this, arguments);
-    }
-    return original;
-}
-
-function restoreFunction(object, original, name) {
-    if (original === undefined) {
-        delete object[name];
-    } else {
-        object[name] = original;
-    }
-}
 
 let workspaceSwitcherPopupInjections;
 
@@ -81,7 +43,7 @@ function enable() {
     
     WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype._workspaceSwitcherPopupThumbnailsExtension = {};
     
-    workspaceSwitcherPopupInjections['_init'] = replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, '_init', function() {
+    workspaceSwitcherPopupInjections['_init'] = MonkeyPatch.replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, '_init', function() {
         let ext = this._workspaceSwitcherPopupThumbnailsExtension;
         
         this.actor = new St.Widget({ reactive: true,
@@ -105,7 +67,7 @@ function enable() {
         ext.timeoutId = Mainloop.timeout_add(DISPLAY_TIMEOUT, Lang.bind(this, this._onTimeout));
     });
     
-    workspaceSwitcherPopupInjections['display'] = replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, 'display', function(direction, activeWorkspaceIndex) {
+    workspaceSwitcherPopupInjections['display'] = MonkeyPatch.replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, 'display', function(direction, activeWorkspaceIndex) {
         let ext = this._workspaceSwitcherPopupThumbnailsExtension;
         
         this._redisplay();
@@ -115,7 +77,7 @@ function enable() {
         ext.timeoutId = Mainloop.timeout_add(DISPLAY_TIMEOUT, Lang.bind(this, this._onTimeout));
     });
     
-    workspaceSwitcherPopupInjections['_redisplay'] = replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, '_redisplay', function() {
+    workspaceSwitcherPopupInjections['_redisplay'] = MonkeyPatch.replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, '_redisplay', function() {
         let ext = this._workspaceSwitcherPopupThumbnailsExtension;
 				
         let workArea = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex);
@@ -127,7 +89,7 @@ function enable() {
         this.actor.y = workArea.y + Math.floor((workArea.height - containerNatHeight) / 2);
     });
     
-    workspaceSwitcherPopupInjections['_onTimeout'] = replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, '_onTimeout', function() {
+    workspaceSwitcherPopupInjections['_onTimeout'] = MonkeyPatch.replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, '_onTimeout', function() {
         let ext = this._workspaceSwitcherPopupThumbnailsExtension;
         
         Mainloop.source_remove(ext.timeoutId);
@@ -139,7 +101,7 @@ function enable() {
                                                     onCompleteScope: this });
     });
     
-    workspaceSwitcherPopupInjections['destroy'] = replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, 'destroy', function() {
+    workspaceSwitcherPopupInjections['destroy'] = MonkeyPatch.replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, 'destroy', function() {
         let ext = this._workspaceSwitcherPopupThumbnailsExtension;
         
         if (ext.timeoutId)
@@ -153,7 +115,7 @@ function enable() {
 
 function disable() {
     for (let name in workspaceSwitcherPopupInjections) {
-        restoreFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, workspaceSwitcherPopupInjections[name], name);
+        MonkeyPatch.restoreFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, workspaceSwitcherPopupInjections[name], name);
     }
     
     delete WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype._workspaceSwitcherPopupThumbnailsExtension;
