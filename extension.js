@@ -104,9 +104,9 @@ function enable() {
     workspaceSwitcherPopupInjections['destroy'] = MonkeyPatch.replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, 'destroy', function() {
         let ext = this._workspaceSwitcherPopupThumbnailsExtension;
         
-        if (ext.timeoutId)
-            Mainloop.source_remove(ext.timeoutId);
-        ext.timeoutId = 0;
+        if (ext.timeoutId) {
+            this._onTimeout();
+        }
 
         this.emit('destroy');
     });
