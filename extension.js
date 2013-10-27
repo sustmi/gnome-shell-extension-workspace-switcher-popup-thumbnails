@@ -29,7 +29,7 @@ const ANIMATION_TIME = 0.1;
 const DISPLAY_TIMEOUT = 600;
 
 function injectBeforeFunction(parent, name, func) {
-		let original = parent[name];
+    let original = parent[name];
     parent[name] = function() {
         let ret;
         ret = func.apply(this, arguments);
@@ -42,7 +42,7 @@ function injectBeforeFunction(parent, name, func) {
 }
 
 function injectAfterFunction(parent, name, func) {
-		let original = parent[name];
+    let original = parent[name];
     parent[name] = function() {
         let ret;
         if (original !== undefined) {
@@ -94,6 +94,9 @@ function enable() {
         
         ext.thumbnailsBox = new WorkspaceThumbnail.ThumbnailsBox();
         ext.thumbnailsBox._createThumbnails();
+        ext.thumbnailsBox._background.set_style('border: 1px solid rgba(128, 128, 128, 0.4); \
+                                                 border-radius: 9px; \
+                                                 padding: 11px;');
         
         this.actor.add_actor(ext.thumbnailsBox.actor);
         
@@ -133,8 +136,7 @@ function enable() {
                                                     time: ANIMATION_TIME,
                                                     transition: 'easeOutQuad',
                                                     onComplete: function() { this.destroy(); },
-                                                    onCompleteScope: this
-                                                  });
+                                                    onCompleteScope: this });
     });
     
     workspaceSwitcherPopupInjections['destroy'] = replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, 'destroy', function() {
