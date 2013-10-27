@@ -79,8 +79,10 @@ function resetState() {
 function enable() {
     resetState();
     
+    WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype._workspaceSwitcherPopupThumbnailsExtension = {};
+    
     workspaceSwitcherPopupInjections['_init'] = replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, '_init', function() {
-        this._workspaceSwitcherPopupThumbnailsExtension = {};
+        let ext = this._workspaceSwitcherPopupThumbnailsExtension;
         
         this.actor = new St.Widget({ reactive: true,
                                      x: 0,
@@ -90,49 +92,57 @@ function enable() {
                                      style_class: 'workspace-switcher-group' });
         Main.uiGroup.add_actor(this.actor);
         
-        this._workspaceSwitcherPopupThumbnailsExtension.thumbnailsBox = new WorkspaceThumbnail.ThumbnailsBox();
-        this._workspaceSwitcherPopupThumbnailsExtension.thumbnailsBox._createThumbnails();
+        ext.thumbnailsBox = new WorkspaceThumbnail.ThumbnailsBox();
+        ext.thumbnailsBox._createThumbnails();
         
-        this.actor.add_actor(this._workspaceSwitcherPopupThumbnailsExtension.thumbnailsBox.actor);
+        this.actor.add_actor(ext.thumbnailsBox.actor);
         
         this._redisplay();
         
-        this._workspaceSwitcherPopupThumbnailsExtension.timeoutId = Mainloop.timeout_add(DISPLAY_TIMEOUT, Lang.bind(this, this._onTimeout));
+        ext.timeoutId = Mainloop.timeout_add(DISPLAY_TIMEOUT, Lang.bind(this, this._onTimeout));
     });
     
     workspaceSwitcherPopupInjections['display'] = replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, 'display', function(direction, activeWorkspaceIndex) {
+        let ext = this._workspaceSwitcherPopupThumbnailsExtension;
+        
         this._redisplay();
         
-        if (this._workspaceSwitcherPopupThumbnailsExtension.timeoutId != 0)
-            Mainloop.source_remove(this._workspaceSwitcherPopupThumbnailsExtension.timeoutId);
-        this._workspaceSwitcherPopupThumbnailsExtension.timeoutId = Mainloop.timeout_add(DISPLAY_TIMEOUT, Lang.bind(this, this._onTimeout));
+        if (ext.timeoutId != 0)
+            Mainloop.source_remove(ext.timeoutId);
+        ext.timeoutId = Mainloop.timeout_add(DISPLAY_TIMEOUT, Lang.bind(this, this._onTimeout));
     });
     
     workspaceSwitcherPopupInjections['_redisplay'] = replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, '_redisplay', function() {
+        let ext = this._workspaceSwitcherPopupThumbnailsExtension;
+				
         let workArea = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex);
         
-        let [containerMinHeight, containerNatHeight] = this._workspaceSwitcherPopupThumbnailsExtension.thumbnailsBox.actor.get_preferred_height(global.screen_width);
-        let [containerMinWidth, containerNatWidth] = this._workspaceSwitcherPopupThumbnailsExtension.thumbnailsBox.actor.get_preferred_width(containerNatHeight);
+        let [containerMinHeight, containerNatHeight] = ext.thumbnailsBox.actor.get_preferred_height(global.screen_width);
+        let [containerMinWidth, containerNatWidth] = ext.thumbnailsBox.actor.get_preferred_width(containerNatHeight);
         
         this.actor.x = workArea.x + Math.floor((workArea.width - containerNatWidth) / 2);
         this.actor.y = workArea.y + Math.floor((workArea.height - containerNatHeight) / 2);
     });
     
     workspaceSwitcherPopupInjections['_onTimeout'] = replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, '_onTimeout', function() {
-        Mainloop.source_remove(this._workspaceSwitcherPopupThumbnailsExtension.timeoutId);
-        this._workspaceSwitcherPopupThumbnailsExtension.timeoutId = 0;
-        Tweener.addTween(this._workspaceSwitcherPopupThumbnailsExtension.thumbnailsBox.actor, { opacity: 0.0,
-                                            time: ANIMATION_TIME,
-                                            transition: 'easeOutQuad',
-                                            onComplete: function() { this.destroy(); },
-                                            onCompleteScope: this
-                                           });
+        let ext = this._workspaceSwitcherPopupThumbnailsExtension;
+        
+        Mainloop.source_remove(ext.timeoutId);
+        ext.timeoutId = 0;
+        Tweener.addTween(ext.thumbnailsBox.actor, { opacity: 0.0,
+                                                    time: ANIMATION_TIME,
+                                                    transition: 'easeOutQuad',
+                                                    onComplete: function() { this.destroy(); },
+                                                    onCompleteScope: this
+                                                  });
     });
     
     workspaceSwitcherPopupInjections['destroy'] = replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, 'destroy', function() {
-        if (this._workspaceSwitcherPopupThumbnailsExtension.timeoutId)
-            Mainloop.source_remove(this._workspaceSwitcherPopupThumbnailsExtension.timeoutId);
-        this._workspaceSwitcherPopupThumbnailsExtension.timeoutId = 0;
+        let ext = this._workspaceSwitcherPopupThumbnailsExtension;
+        
+        if (ext.timeoutId)
+            Mainloop.source_remove(ext.timeoutId);
+        ext.timeoutId = 0;
 
         this.emit('destroy');
     });
@@ -143,6 +153,9 @@ function disable() {
     for (let name in workspaceSwitcherPopupInjections) {
         restoreFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, workspaceSwitcherPopupInjections[name], name);
     }
+    
+    delete WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype._workspaceSwitcherPopupThumbnailsExtension;
+    
     resetState();
 }
 
