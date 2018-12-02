@@ -1,1 +1,9 @@
-
+.workspace-switcher-popup-thumbnails-extension .workspace-thumbnails {
+    /* ThumbnailsBox has border radius only on left-hand corners because
+       it is normally displayed on the right panel in the window overview.
+       As we reuse ThumbnailsBox in the center of the screen we need to
+       override the rule so that border radius is applied
+       to all corners in our context.
+       */
+    border-radius: 9px;
+}

@@ -1,6 +1,6 @@
 {
-    "shell-version": ["3.8"],
-    "uuid": "gnome-shell-extension-workspace-switcher-popup-thumbnails@sustmidown.centrum.cz",
+    "shell-version": ["3.30"],
+    "uuid": "workspace-switcher-popup-thumbnails@sustmidown.centrum.cz",
     "name": "WorkspaceSwitcherPopup Thumbnails",
     "description": "Show workspace thumbnails when switching between workspaces",
     "url": "TODO"

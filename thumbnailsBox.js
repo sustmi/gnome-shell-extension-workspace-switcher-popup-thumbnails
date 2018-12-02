@@ -1,5 +1,8 @@
-// Overriden ThumbnailsBox class from Gnome Shell
-// Added support for disconnecting signals
+// ThumbnailsBox class is normally used to display workspace thumbnails
+// in window overview (the bar on right after pressing SUPER key).
+// This extension uses overriden variant that can be used even
+// in workspaceSwitcherPopup (shown when using CTRL+ALT+UP or DOWN).
+// For details of changes see the inline comments with diffs.
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -26,34 +29,21 @@ const Main = imports.ui.main;
 const WorkspaceThumbnail = imports.ui.workspaceThumbnail;
 
 const ThumbnailState = WorkspaceThumbnail.ThumbnailState;
-const OVERRIDE_SCHEMA = WorkspaceThumbnail.OVERRIDE_SCHEMA;
+const MUTTER_SCHEMA = WorkspaceThumbnail.MUTTER_SCHEMA;
 
 const ThumbnailsBox = new Lang.Class({
     Name: 'ThumbnailsBox',
     Extends: WorkspaceThumbnail.ThumbnailsBox,
 
-    _init: function() {
+// Method copy-pasted from GNOME Shell v3.30.2 (gnome-shell/js/ui/workspaceThumbnail.js)
+    _init() {
         this.actor = new Shell.GenericContainer({ reactive: true,
-                                                  style_class: 'workspace-thumbnails',
-                                                  request_mode: Clutter.RequestMode.WIDTH_FOR_HEIGHT });
-        this.actor.connect('get-preferred-width', Lang.bind(this, this._getPreferredWidth));
-        this.actor.connect('get-preferred-height', Lang.bind(this, this._getPreferredHeight));
-        this.actor.connect('allocate', Lang.bind(this, this._allocate));
+            style_class: 'workspace-thumbnails',
+            request_mode: Clutter.RequestMode.WIDTH_FOR_HEIGHT });
+        this.actor.connect('get-preferred-width', this._getPreferredWidth.bind(this));
+        this.actor.connect('get-preferred-height', this._getPreferredHeight.bind(this));
+        this.actor.connect('allocate', this._allocate.bind(this));
         this.actor._delegate = this;
-
-        // When we animate the scale, we don't animate the requested size of the thumbnails, rather
-        // we ask for our final size and then animate within that size. This slightly simplifies the
-        // interaction with the main workspace windows (instead of constantly reallocating them
-        // to a new size, they get a new size once, then use the standard window animation code
-        // allocate the windows to their new positions), however it causes problems for drawing
-        // the background and border wrapped around the thumbnail as we animate - we can't just pack
-        // the container into a box and set style properties on the box since that box would wrap
-        // around the final size not the animating size. So instead we fake the background with
-        // an actor underneath the content and adjust the allocation of our children to leave space
-        // for the border and padding of the background actor.
-        this._background = new St.Bin({ style_class: 'workspace-thumbnails-background' });
-
-        this.actor.add_actor(this._background);
 
         let indicator = new St.Bin({ style_class: 'workspace-thumbnail-indicator' });
 
@@ -82,23 +72,59 @@ const ThumbnailsBox = new Lang.Class({
 
         this._thumbnails = [];
 
-        this.actor.connect('button-press-event', function() { return true; });
-        this.actor.connect('button-release-event', Lang.bind(this, this._onButtonRelease));
+        this.actor.connect('button-press-event', () => Clutter.EVENT_STOP);
+        this.actor.connect('button-release-event', this._onButtonRelease.bind(this));
+        this.actor.connect('touch-event', this._onTouchEvent.bind(this));
 
-        this._settings = new Gio.Settings({ schema: OVERRIDE_SCHEMA });
-        this._dynamicWorkspacesId = this._settings.connect('changed::dynamic-workspaces',
-            Lang.bind(this, this._updateSwitcherVisibility));
+// PATCH: Do not connect to signals that make sense only in the right panel
+// in window overview
+/*-        Main.overview.connect('showing',*/
+/*-            this._createThumbnails.bind(this));*/
+/*-        Main.overview.connect('hidden',*/
+/*-            this._destroyThumbnails.bind(this));*/
+/*-
+/*-        Main.overview.connect('item-drag-begin',*/
+/*-            this._onDragBegin.bind(this));*/
+/*-        Main.overview.connect('item-drag-end',*/
+/*-            this._onDragEnd.bind(this));*/
+/*-        Main.overview.connect('item-drag-cancelled',*/
+/*-            this._onDragCancelled.bind(this));*/
+/*-        Main.overview.connect('window-drag-begin',*/
+/*-            this._onDragBegin.bind(this));*/
+/*-        Main.overview.connect('window-drag-end',*/
+/*-            this._onDragEnd.bind(this));*/
+/*-        Main.overview.connect('window-drag-cancelled',*/
+/*-            this._onDragCancelled.bind(this));*/
+
+        this._settings = new Gio.Settings({ schema_id: MUTTER_SCHEMA });
+        this._settings.connect('changed::dynamic-workspaces',
+            this._updateSwitcherVisibility.bind(this));
+
+        Main.layoutManager.connect('monitors-changed', () => {
+            this._destroyThumbnails();
+// PATCH: Create thumbnails on "monitors-changed" even when not in overview mode
+/*-            if (Main.overview.visible)*/
+                this._createThumbnails();
+        });
+
+        this._switchWorkspaceNotifyId = 0;
+        this._nWorkspacesNotifyId = 0;
+        this._syncStackingId = 0;
+        this._workareasChangedId = 0;
     },
-    
-    destroy: function () {
-        this.actor.destroy();
-        for (let i in this._signals) {
-            Main.overview.disconnect(this._signals[i]);
-        }
-        this._settings.disconnect(this._dynamicWorkspacesId);
-        
-        this.emit('destroy');
-    }
-    
+
+// Method copy-pasted from GNOME Shell v3.30.2 (gnome-shell/js/ui/workspaceThumbnail.js)
+    _ensurePorthole() {
+// PATCH: Allocate porthole even when not in overview mode
+/*-        if (!Main.layoutManager.primaryMonitor || !Main.overview.visible)*/
+/*+*/   if (!Main.layoutManager.primaryMonitor)
+            return false;
+
+        if (!this._porthole)
+            this._porthole = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex);
+
+        return true;
+    },
+
 });
 Signals.addSignalMethods(ThumbnailsBox.prototype);
