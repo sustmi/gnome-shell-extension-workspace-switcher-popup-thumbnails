@@ -1,5 +1,5 @@
 {
-    "shell-version": ["3.30"],
+    "shell-version": ["3.22", "3.24", "3.26", "3.28", "3.30"],
     "uuid": "workspace-switcher-popup-thumbnails@sustmidown.centrum.cz",
     "name": "Workspace Switcher Popup with Thumbnails",
     "description": "Show workspace thumbnails when switching between workspaces",

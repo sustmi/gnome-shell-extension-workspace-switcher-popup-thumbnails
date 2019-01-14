@@ -29,14 +29,17 @@ const Main = imports.ui.main;
 const WorkspaceThumbnail = imports.ui.workspaceThumbnail;
 
 const ThumbnailState = WorkspaceThumbnail.ThumbnailState;
-const MUTTER_SCHEMA = WorkspaceThumbnail.MUTTER_SCHEMA;
+
+const SETTINGS_SCHEMA = WorkspaceThumbnail.MUTTER_SCHEMA !== undefined
+    ? WorkspaceThumbnail.MUTTER_SCHEMA
+    : WorkspaceThumbnail.OVERRIDE_SCHEMA;
 
 const ThumbnailsBox = new Lang.Class({
     Name: 'ThumbnailsBox',
     Extends: WorkspaceThumbnail.ThumbnailsBox,
 
 // Method copy-pasted from GNOME Shell v3.30.2 (gnome-shell/js/ui/workspaceThumbnail.js)
-    _init() {
+    _init: function() {
         this.actor = new Shell.GenericContainer({ reactive: true,
             style_class: 'workspace-thumbnails',
             request_mode: Clutter.RequestMode.WIDTH_FOR_HEIGHT });
@@ -96,7 +99,9 @@ const ThumbnailsBox = new Lang.Class({
 /*-        Main.overview.connect('window-drag-cancelled',*/
 /*-            this._onDragCancelled.bind(this));*/
 
-        this._settings = new Gio.Settings({ schema_id: MUTTER_SCHEMA });
+// PATCH: Use right schema_id based on GNOME Shell version
+/*-        this._settings = new Gio.Settings({ schema_id: MUTTER_SCHEMA });*/
+        this._settings = new Gio.Settings({ schema_id: SETTINGS_SCHEMA });
         this._settings.connect('changed::dynamic-workspaces',
             this._updateSwitcherVisibility.bind(this));
 
@@ -114,7 +119,7 @@ const ThumbnailsBox = new Lang.Class({
     },
 
 // Method copy-pasted from GNOME Shell v3.30.2 (gnome-shell/js/ui/workspaceThumbnail.js)
-    _ensurePorthole() {
+    _ensurePorthole: function() {
 // PATCH: Allocate porthole even when not in overview mode
 /*-        if (!Main.layoutManager.primaryMonitor || !Main.overview.visible)*/
 /*+*/   if (!Main.layoutManager.primaryMonitor)
