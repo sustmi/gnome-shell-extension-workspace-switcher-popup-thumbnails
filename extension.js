@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+const GLib = imports.gi.GLib;
+const GObject = imports.gi.GObject;
 const Lang = imports.lang;
 const Mainloop = imports.mainloop;
 const St = imports.gi.St;
@@ -24,116 +26,100 @@ const Tweener = imports.ui.tweener;
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const MonkeyPatch = Me.imports.monkeyPatch;
 
 const WorkspaceSwitcherPopup = imports.ui.workspaceSwitcherPopup;
-const ThumbnailsBox = Me.imports.thumbnailsBox;
+const ThumbnailsBoxForWorkspaceSwitcher = Me.imports.thumbnailsBoxForWorkspaceSwitcher;
 
 const ANIMATION_TIME = WorkspaceSwitcherPopup.ANIMATION_TIME;
 const DISPLAY_TIMEOUT = WorkspaceSwitcherPopup.DISPLAY_TIMEOUT;
 
-let workspaceSwitcherPopupInjections;
+let originalWorkspaceSwitcherPopup;
 
-function resetState() {
-    workspaceSwitcherPopupInjections = {};
-}
+var WorkspaceSwitcherPopupWithThumbnails = GObject.registerClass(
+class WorkspaceSwitcherPopupWithThumbnails extends St.Widget {
+    _init() {
+        super._init({ x: 0,
+                      y: 0,
+                      width: global.screen_width,
+                      height: global.screen_height,
+                      style_class: 'workspace-switcher-group' });
 
-function enable() {
-    resetState();
-    
-    WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype._workspaceSwitcherPopupThumbnailsExtension = {};
-    
-    workspaceSwitcherPopupInjections['_init'] = MonkeyPatch.replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, '_init', function() {
-        let ext = this._workspaceSwitcherPopupThumbnailsExtension;
-        
         this.actor = new St.Widget({ reactive: true,
                                      style_class: 'workspace-switcher-popup-thumbnails-extension' });
         Main.uiGroup.add_actor(this.actor);
 
-        ext.thumbnailsBox = new ThumbnailsBox.ThumbnailsBox();
-        ext.thumbnailsBox._createThumbnails();
+        this._thumbnailsBox = new ThumbnailsBoxForWorkspaceSwitcher.ThumbnailsBoxForWorkspaceSwitcher();
+        this._thumbnailsBox._createThumbnails();
 
-        this.actor.add_actor(ext.thumbnailsBox.actor);
-        
+        this.actor.add_actor(this._thumbnailsBox.actor);
+
         this._redisplay();
-        
-        ext.popupHideTimeoutId = Mainloop.timeout_add(DISPLAY_TIMEOUT, Lang.bind(this, this._onTimeout));
-    });
-    
-    workspaceSwitcherPopupInjections['display'] = MonkeyPatch.replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, 'display', function(direction, activeWorkspaceIndex) {
-        let ext = this._workspaceSwitcherPopupThumbnailsExtension;
-        
+
+        this._popupHideTimeoutId = Mainloop.timeout_add(DISPLAY_TIMEOUT, Lang.bind(this, this._onTimeout));
+    }
+
+    display() {
         this._redisplay();
 
         // Restart timeout
-        if (ext.popupHideTimeoutId)
-            Mainloop.source_remove(ext.popupHideTimeoutId);
-        ext.popupHideTimeoutId = Mainloop.timeout_add(DISPLAY_TIMEOUT, Lang.bind(this, this._onTimeout));
-    });
-    
-    workspaceSwitcherPopupInjections['_redisplay'] = MonkeyPatch.replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, '_redisplay', function() {
-        let ext = this._workspaceSwitcherPopupThumbnailsExtension;
+        if (this._popupHideTimeoutId)
+            Mainloop.source_remove(this._popupHideTimeoutId);
+        this._popupHideTimeoutId = Mainloop.timeout_add(DISPLAY_TIMEOUT, Lang.bind(this, this._onTimeout));
+    }
 
+    _redisplay() {
         // Stop the hiding animation if the popup should be redisplayed
-        Tweener.removeTweens(ext.thumbnailsBox.actor);
-        ext.thumbnailsBox.actor.opacity = 255;
+        Tweener.removeTweens(this._thumbnailsBox.actor, 'opacity');
+        this._thumbnailsBox.actor.opacity = 255;
 
         // Position thumbnailsBox into center of the window
         let workArea = Main.layoutManager.getWorkAreaForMonitor(Main.layoutManager.primaryIndex);
-        
-        let [containerMinHeight, containerNatHeight] = ext.thumbnailsBox.actor.get_preferred_height(global.screen_width);
-        let [containerMinWidth, containerNatWidth] = ext.thumbnailsBox.actor.get_preferred_width(containerNatHeight);
+
+        let [containerMinHeight, containerNatHeight] = this._thumbnailsBox.actor.get_preferred_height(global.screen_width);
+        let [containerMinWidth, containerNatWidth] = this._thumbnailsBox.actor.get_preferred_width(containerNatHeight);
 
         this.actor.x = workArea.x + Math.floor((workArea.width - containerNatWidth) / 2);
         this.actor.y = workArea.y + Math.floor((workArea.height - containerNatHeight) / 2);
-    });
-    
-    workspaceSwitcherPopupInjections['_onTimeout'] = MonkeyPatch.replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, '_onTimeout', function() {
-        let ext = this._workspaceSwitcherPopupThumbnailsExtension;
+    }
 
+    _onTimeout() {
         // Animate hiding of the popup and destroy it afterwards
-        Tweener.addTween(ext.thumbnailsBox.actor, { opacity: 0.0,
+        Tweener.addTween(this._thumbnailsBox.actor, { opacity: 0.0,
                                                     time: ANIMATION_TIME,
                                                     transition: 'easeOutQuad',
-                                                    onComplete: function() { this.destroy(); },
+                                                    onComplete: () => { this.destroy(); },
                                                     onCompleteScope: this });
         // Stop timer
-        ext.popupHideTimeoutId = 0;
-        return false;
-    });
-    
-    workspaceSwitcherPopupInjections['destroy'] = MonkeyPatch.replaceFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, 'destroy', function() {
-        let ext = this._workspaceSwitcherPopupThumbnailsExtension;
+        this._popupHideTimeoutId = 0;
+        return GLib.SOURCE_REMOVE;
+    }
 
+    destroy() {
         // Stop timer if it was running
-        if (ext.popupHideTimeoutId) {
-            Mainloop.source_remove(ext.popupHideTimeoutId);
-            ext.popupHideTimeoutId = 0;
+        if (this._popupHideTimeoutId) {
+            Mainloop.source_remove(this._popupHideTimeoutId);
+            this._popupHideTimeoutId = 0;
         }
 
-        // Stop any ongoing animation
-        Tweener.removeTweens(ext.thumbnailsBox.actor);
-        
-        ext.thumbnailsBox._destroyThumbnails();
-        this.actor.destroy();
+        // Stop any ongoing animation and hide
+        Tweener.removeTweens(this._thumbnailsBox.actor);
+        this._thumbnailsBox.actor.opacity = 0;
 
-        this.emit('destroy');
-    });
+        super.destroy();
+    }
+});
 
+function enable() {
+    originalWorkspaceSwitcherPopup = WorkspaceSwitcherPopup.WorkspaceSwitcherPopup;
+    WorkspaceSwitcherPopup.WorkspaceSwitcherPopup = WorkspaceSwitcherPopupWithThumbnails;
 }
 
 function disable() {
-    for (let name in workspaceSwitcherPopupInjections) {
-        MonkeyPatch.restoreFunction(WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype, workspaceSwitcherPopupInjections[name], name);
-    }
-    
-    delete WorkspaceSwitcherPopup.WorkspaceSwitcherPopup.prototype._workspaceSwitcherPopupThumbnailsExtension;
-    
-    resetState();
+    WorkspaceSwitcherPopup.WorkspaceSwitcherPopup = originalWorkspaceSwitcherPopup;
 }
 
 function init() {
-    // Stateless
+    originalWorkspaceSwitcherPopup = WorkspaceSwitcherPopup.WorkspaceSwitcherPopup;
 }
 
 // 3.0 API backward compatibility
