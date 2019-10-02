@@ -5,9 +5,9 @@ Workspace Switcher Popup with Thumbnails (GNOME Shell Extension)
 <a href="https://www.buymeacoffee.com/sustmi" target="_blank" title="Donate to this project using Buy Me A Coffee"><img src="https://img.shields.io/badge/buy%20me%20a%20coffee-donate-orange.svg" alt="Buy Me A Coffee donate button" /></a>
 
 ## Repository status - Abandoned
-Let’s be honest: *I don’t have enough time to maintain this project any more*. I personally do not use this extension because happy with workflow with just one workspace. I do not have motivation to make it work with new versions of Gnome Shell. 
+Let’s be honest: *I don’t have enough time to maintain this project any more*. I personally do not use this extension because happy with workflow with just one workspace. I do not have motivation to make it work with new versions of Gnome Shell. The last supported version of GNOME Shell is v3.32.
 
-If you like this extension, check [Workspace Matrix](https://extensions.gnome.org/extension/1485/workspace-matrix/) that does basically the same as this extension and even more (psst, it can arrange workspaces in a grid).
+If you got used to the functionality provided by this extension, check [Workspace Matrix](https://extensions.gnome.org/extension/1485/workspace-matrix/) that does basically the same as this extension and even more (psst, it can arrange workspaces in a grid).
 
 ## What was this extension about?
 
